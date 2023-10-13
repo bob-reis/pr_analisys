@@ -19,11 +19,24 @@ O projeto é composto pelos seguintes arquivos e diretórios:
 
 ### Diagrama de Fluxos
 
-Pull Request Hook
+Pull Request Hook - Flow Chart
+
 ![Pull Request Hook Flow](documentacoes/images/pullrequest-hook-flow.png)
 
-API
+
+Pull Request Hook - Plant UML
+
+![Pull Request Hook UML](documentacoes/images/pullrequest-hook-pantuml.png)
+
+
+API - Flow Chart
+
 ![API Flow](documentacoes/images/api-flow.png)
+
+
+API - Plant UML
+
+![API UML](documentacoes/images/api-plantuml.png)
 
 ## Pré-requisitos
 - Uma conta no Azure DevOps com acesso a um repositório de código e permissões para configurar webhooks.
@@ -38,8 +51,8 @@ API
 Se você não baixou o código diretamente, clone o repositório do GitHub usando o seguinte comando:
 
 ```
-git clone https://github.com/bob-reis/pr_analisys.git
-cd pr_analisys
+git clone https://github.com/bob-reis/pr_analysis.git
+cd pr_analysis
 ```
 
 2. Configuração de Variáveis de Ambiente:
