@@ -17,6 +17,14 @@ O projeto é composto pelos seguintes arquivos e diretórios:
 - PR.Dockerfile: Um Dockerfile para construir a imagem do container para o webhook.
 - requirements.txt: Um arquivo que lista todas as dependências necessárias para o projeto.
 
+### Diagrama de Fluxos
+
+Pull Request Hook
+![Pull Request Hook Flow](documentacoes/images/pullrequest-hook-flow.png)
+
+API
+![API Flow](documentacoes/images/api-flow.png)
+
 ## Pré-requisitos
 - Uma conta no Azure DevOps com acesso a um repositório de código e permissões para configurar webhooks.
 - Uma conta na OpenAI com acesso à API da OpenAI.
