@@ -9,6 +9,8 @@ from git import Repo
 import shutil
 import git
 import subprocess
+import textwrap
+import threading
 
 git.refresh(path='/usr/bin/git')
 
@@ -54,13 +56,7 @@ def update_repository(repo_dir):
 def get_diff(repo_dir, source_commit_id, target_commit_id):
     repo = git.Repo(repo_dir)
     diff_output = repo.git.diff(f'{target_commit_id}..{source_commit_id}')
-
     return diff_output
-
-
-def clean_repository(repo_dir):
-    shutil.rmtree(repo_dir)
-
 
 def validate_pr_data(pr_data):
     try:
@@ -80,20 +76,26 @@ def validate_pr_data(pr_data):
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
-    pr_data = request.json
-    if pr_data is None:
-        logging.error('Payload não é um JSON válido ou cabeçalho Content-Type incorreto.')
-        return jsonify({'error': 'Bad Request'}), 400
-    logging.debug(f'Payload recebido: {request.json}')
-    try:
-        pr_data = request.json
-        response = analyze_code_and_comment(pr_data)
-        if response:
-            return response
-        return jsonify({'status': 'success'}), 200
-    except Exception as e:
-        logging.exception("Erro ao processar o webhook")
-        return jsonify({'error': f"Top-level error: {str(e)}"}), 400
+    response = jsonify({'status': 'received'}), 200
+    threading.Thread(target=process_webhook, args=(request.json,)).start()
+    return response
+    
+def process_webhook(pr_data):
+    with app.app_context():
+        if pr_data is None:
+            logging.error('Payload não é um JSON válido ou cabeçalho Content-Type incorreto.')
+            return jsonify({'error': 'Bad Request'}), 400  
+        logging.debug(f'Payload recebido: {pr_data}')
+        try:
+            response = analyze_code_and_comment(pr_data)
+            if response:
+                return response  
+            return jsonify({'status': 'success'}), 200  
+        except Exception as e:
+            logging.exception("Erro ao processar o webhook")
+            return jsonify({'error': f"Top-level error: {str(e)}"}), 400  
+
+
     
 def save_diff_to_file(diff_content):
     file_path = '/app/diff.txt'
@@ -111,7 +113,6 @@ def analyze_code_and_comment(pr_data):
 
         source_commit_id = pr_data['resource']['lastMergeSourceCommit']['commitId']
         target_commit_id = pr_data['resource']['lastMergeTargetCommit']['commitId']
-        diff_index = get_diff(repo_dir, source_commit_id, target_commit_id)
         diff_content = get_diff(repo_dir, source_commit_id, target_commit_id)
         
         diff_file_path = save_diff_to_file(diff_content)
@@ -120,7 +121,18 @@ def analyze_code_and_comment(pr_data):
         if not all([organization, project, repositoryId, pullRequestId]):
             raise ValueError('Missing necessary information from the webhook payload')
 
-        context = "Você é um líder técnico de um time de desenvolvimento. Considerando as práticas de clean code, DRY e SOLID, analise esta alteração no código e comente indicando possíveis problemas e possíveis melhorias:\n"
+        context = textwrap.dedent("""
+            Você é um líder técnico revisando uma alteração proposta no código. Por favor, considere os seguintes pontos durante a análise:
+            - Clean Code: O código é legível, bem organizado e possui nomes de variáveis e funções descritivos?
+            - DRY (Don't Repeat Yourself): Existem partes do código que são repetidas e que poderiam ser refatoradas?
+            - Princípios SOLID: O código adere aos princípios SOLID? Por exemplo, ele segue o princípio da responsabilidade única?
+            - Segurança: Existem potenciais falhas de segurança, como vazamento de dados sensíveis ou vulnerabilidades de injeção de SQL?
+            - Exemplo: Se possível, forneça exemplos de como o código poderia ser refatorado para melhor aderir a estas práticas.
+
+            Identifique e comente sobre qualquer problema encontrado, sugerindo melhorias específicas que podem ser feitas para abordar cada problema.
+        """)
+
+        
         full_content = context + "`\n" + diff_content + "`"
         
         messages = [
@@ -148,7 +160,6 @@ def analyze_code_and_comment(pr_data):
         comment_response = requests.post(comments_url, headers=headers, json=comment_data)
         if comment_response.status_code != 200:
             raise Exception(f"Failed to post comment: {comment_response.text}")
-        clean_repository(repo_dir)
 
     except Exception as e:
         logging.exception(f'Erro na função analyze_code_and_comment: {str(e)}')
